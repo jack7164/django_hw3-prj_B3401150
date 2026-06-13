@@ -3,185 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待辦事項清單</title>
+    <title>智慧生活小幫手 V3 - 控制台</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        .completed-text {
-            text-decoration: line-through;
-            color: #6c757d;
+        /* 精緻的高質感漸層背景 */
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            min-vh-100: 100vh;
         }
-        .todo-item {
-            transition: all 0.2s;
+        /* 任務已完成的刪除線與淡化效果 */
+        .completed-text { 
+            text-decoration: line-through; 
+            color: #adb5bd; 
         }
-        .todo-item:hover {
+        /* 列表項目的微動態懸浮效果 */
+        .todo-item { 
+            transition: all 0.25s ease; 
+        }
+        .todo-item:hover { 
             background-color: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05) !important;
+        }
+        /* 膠囊帳戶標籤樣式 */
+        .user-badge {
+            background-color: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container mt-5" style="max-width: 700px;">
-    <div class="card shadow">
-        <div class="card-body p-4">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow mb-4 sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-extrabold fs-4 text-white" href="#">
+            <i class="bi bi-check2-square text-info me-2"></i>生活小幫手 <span class="badge bg-info text-dark fs-6 align-middle">V3</span>
+        </a>
+        <div class="d-flex align-items-center">
+            <span class="navbar-text text-white me-3 px-3 py-2 rounded-pill user-badge border border-secondary">
+                <i class="bi bi-person-circle text-info me-2"></i>在線使用者：<strong class="text-warning">{{ request.user.username }}</strong>
+            </span>
+            <form action="{% url 'logout' %}" method="POST" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-box-arrow-right me-1"></i>登出系統
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-5" style="max-width: 800px;">
+    <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+        
+        <div class="bg-primary" style="height: 6px;"></div>
+
+        <div class="card-body p-4 p-md-5 bg-white">
             
-            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                <span class="text-muted fw-bold">
-                    👤目前登入：<span class="text-primary">{{ request.user.username }}</span>
-                </span>
-                <form action="{% url 'logout' %}" method="POST" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm">登出系統</button>
-                </form>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="fw-bold text-primary mb-0">我的待辦事項</h2>
-                
-                <div class="d-flex align-items-center">
-                    <div class="form-check form-switch me-3 mb-0">
-                        <input class="form-check-input" type="checkbox" id="SafeModeToggle" style="cursor: pointer;">
-                        <script>
-                            document.getElementById('SafeModeToggle').checked = true; // 預設開啟安全模式
-                        </script>
-                        <label class="form-check-label text-muted" for="SafeModeToggle" style="cursor: pointer; font-size: 0.9rem;">
-                        安全模式
-                        </label>
-                    </div>
-                    
-                    <a href="{% url 'add_todo_page' %}" class="btn btn-success px-4 shadow-sm">+ 新增任務</a>
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3 text-primary">
+                    <i class="bi bi-columns-gap fs-2"></i>
+                </div>
+                <div>
+                    <h2 class="fw-black text-dark m-0">我的待辦事項</h2>
+                    <p class="text-muted m-0 small">透過非同步 RESTful API 進行極速動態管理</p>
                 </div>
             </div>
 
-            <div class="list-group list-group-flush" id="taskList">
-                {% for task in todos %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center px-0 todo-item" 
-                         id="todo-{{ task.id }}">
-                        
-                        <div class="d-flex align-items-center flex-grow-1">
-                            <input class="form-check-input me-3" type="checkbox" 
-                                style="width: 1.5rem; height: 1.5rem; cursor: pointer;"
-                                onchange="handleTaskCheck({{ task.id }}, this)"
-                                {% if task.is_completed %}checked{% endif %}>
-                                
-                            <div class="d-flex flex-column">
-                                <span class="fs-5 {% if task.is_completed %}completed-text{% endif %}" id="title-{{ task.id }}">
-                                    {{ task.title }}
-                                </span>
-                                {% if task.content %}
-                                <span class="text-muted mb-1" style="font-size: 0.9rem;">
-                                    {{ task.content }}
-                                </span>
-                                {% endif %}
-                                {% if task.deadline %}
-                                <span class="badge bg-info text-dark align-self-start" style="font-size: 0.8rem;">
-                                    ⏰ 截止：{{ task.deadline|date:"Y/m/d H:i" }}
-                                </span>
-                                {% endif %}
+            <div class="card border border-light-subtle bg-light rounded-3 mb-5 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="card-title text-secondary mb-3"><i class="bi bi-plus-circle-fill me-2"></i>建立新待辦事項</h5>
+                    <form id="apiAddForm">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <div class="form-floating">
+                                    <input type="text" id="apiTitle" class="form-control border-secondary-subtle" placeholder="任務名稱" required>
+                                    <label for="apiTitle"><i class="bi bi-pencil me-1"></i>任務名稱 (必填)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-floating">
+                                    <input type="datetime-local" id="apiDeadline" class="form-control border-secondary-subtle">
+                                    <label for="apiDeadline"><i class="bi bi-calendar-event me-1"></i>設定截止日期</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" id="apiContent" class="form-control border-secondary-subtle" placeholder="詳細內容">
+                                    <label for="apiContent"><i class="bi bi-file-text me-1"></i>詳細內容與備註說明 (選填)</label>
+                                </div>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 shadow-sm fw-bold">
+                                    <i class="bi bi-send-fill me-2"></i>發送
+                                </button>
                             </div>
                         </div>
-                        
-                        <a href="{% url 'edit_todo_page' task.id %}" class="btn btn-sm btn-outline-primary me-2 px-3 shadow-sm" style="border-radius: 20px;">
-                            編輯
-                        </a>
-                        
-                        <button type="button" class="btn-close ms-3" aria-label="Delete" 
-                                onclick="deleteTask({{ task.id }})" style="font-size: 0.8rem;"></button>
-                    </div>
-                {% endfor %}
+                    </form>
+                </div>
             </div>
 
-            <div id="emptyMessage" class="text-center py-5 text-muted d-none">
-                <p class="fs-5 mb-0">目前沒有待辦事項，休息一下吧！</p>
+            <h5 class="text-dark fw-bold mb-3 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-task me-2 text-primary"></i>任務清單明細</span>
+            </h5>
+
+            <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm" id="taskList">
+                <div class="text-center py-5 text-muted" id="loadingMsg">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    正在與安全雲端資料庫同步中...
+                </div>
+            </div>
+
+            <div id="emptyMessage" class="text-center py-5 text-muted d-none bg-light rounded-3 border border-dashed mt-3">
+                <i class="bi bi-emoji-smile fs-1 text-secondary mb-2 d-block"></i>
+                <p class="fs-5 fw-medium mb-1 text-dark">太棒了！目前沒有任何未辦事項</p>
+                <p class="small text-muted mb-0">您可以利用上方表單隨時指派全新任務</p>
             </div>
 
         </div>
     </div>
 </div>
 
-{% csrf_token %}
-
 <script>
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    const deleteModeToggle = document.getElementById('deleteModeToggle');
+    document.addEventListener('DOMContentLoaded', loadTasks);
 
-    // 頁面載入時檢查是否為空
-    document.addEventListener('DOMContentLoaded', () => {
-        checkEmptyState();
-    });
-
-    // 檢查畫面是否為空
-    function checkEmptyState() {
-        // 選取所有還在畫面上的任務元素
-        const items = document.querySelectorAll('.todo-item');
-        const emptyMessage = document.getElementById('emptyMessage');
-        
-        if (items.length > 0) {
-            emptyMessage.classList.add('d-none'); // 還有任務，隱藏休息訊息
-        } else {
-            emptyMessage.classList.remove('d-none'); // 沒任務了，顯示休息訊息
-        }
-    }
-
-    // 處理任務打勾的核心邏輯
-    function handleTaskCheck(id, checkboxElem) {
-        // 如果「打勾後直接刪除」的開關有被開啟，而且使用者是把任務「打勾」
-        if (!SafeModeToggle.checked && checkboxElem.checked) {
-            
-            // 直接呼叫後端的刪除 API
-            fetch(`/delete/${id}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrftoken }
-            })
+    // [API: GET] 讀取任務
+    function loadTasks() {
+        fetch('/api/todos/')
             .then(response => response.json())
             .then(data => {
-                if (data.status === 'success') {
-                    const element = document.getElementById(`todo-${id}`);
-                    element.remove(); // 從畫面上徹底移除
-                    checkEmptyState(); // 檢查要不要顯示休息訊息
-                }
-            });
-            
-        } else {
-            // 保留模式：呼叫切換狀態 API (加上/移除 刪除線)
-            fetch(`/toggle/${id}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrftoken }
-            })
-            .then(response => response.json())
-            .then(data => {
-                const titleSpan = document.getElementById(`title-${id}`);
-                if (data.is_completed) {
-                    titleSpan.classList.add('completed-text');
-                    checkboxElem.checked = true;
+                document.getElementById('loadingMsg').classList.add('d-none');
+                const taskList = document.getElementById('taskList');
+                taskList.innerHTML = ''; 
+
+                if (data.data.length === 0) {
+                    document.getElementById('emptyMessage').classList.remove('d-none');
                 } else {
-                    titleSpan.classList.remove('completed-text');
-                    checkboxElem.checked = false;
+                    document.getElementById('emptyMessage').classList.add('d-none');
+                    data.data.forEach(task => renderTaskHTML(task));
                 }
             });
-        }
     }
 
-    // 右邊專屬的 X 按鈕 (維持原本的刪除功能，並帶有確認視窗)
-    function deleteTask(id) {
-        if (SafeModeToggle.checked) {
-            if (!confirm('確定要刪除這項任務嗎？')) return;
-        }
+    // [API: POST] 新增任務
+    document.getElementById('apiAddForm').addEventListener('submit', function(e) {
+        e.preventDefault();
         
+        const taskContentValue = document.getElementById('apiContent').value;
+        const payload = {
+            title: document.getElementById('apiTitle').value,
+            content: taskContentValue,
+            description: taskContentValue,
+            memo: taskContentValue,
+            content: document.getElementById('apiContent').value,
+            deadline: document.getElementById('apiDeadline').value || null
+        };
 
-        fetch(`/delete/${id}/`, {
+        fetch('/api/todos/', {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                const element = document.getElementById(`todo-${id}`);
-                element.remove();
-                checkEmptyState();
+                document.getElementById('apiAddForm').reset();
+                document.getElementById('emptyMessage').classList.add('d-none');
+                renderTaskHTML(data.data, true);
+            } else {
+                alert('驗證不通過：' + JSON.stringify(data.errors));
+            }
+        });
+    });
+
+    // [API: PATCH] 變更狀態
+    function toggleTask(id, checkbox) {
+        fetch(`/api/todos/${id}/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_completed: checkbox.checked })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const titleSpan = document.getElementById(`title-${id}`);
+            const contentSpan = document.getElementById(`content-${id}`);
+            if (data.data.is_completed) {
+                titleSpan.classList.add('completed-text');
+                if(contentSpan) contentSpan.classList.add('completed-text');
+            } else {
+                titleSpan.classList.remove('completed-text');
+                if(contentSpan) contentSpan.classList.remove('completed-text');
             }
         });
     }
+
+    // [API: DELETE] 刪除任務
+    function deleteTask(id) {
+        if (!confirm('確認要透過 RESTful API 徹底銷毀此項紀錄嗎？')) return;
+
+        fetch(`/api/todos/${id}/`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById(`todo-${id}`).remove();
+                if (document.querySelectorAll('.todo-item').length === 0) {
+                    document.getElementById('emptyMessage').classList.remove('d-none');
+                }
+            }
+        });
+    }
+
+    // 動態 HTML 注入元件 (套用全新 Bootstrap 樣式與 Icon)
+    function renderTaskHTML(task, prepend = false) {
+        const taskList = document.getElementById('taskList');
+        const isChecked = task.is_completed ? 'checked' : '';
+        const textClass = task.is_completed ? 'completed-text' : '';
+        
+        const taskContent = task.content || task.description || task.memo || '';
+        
+        // 處理截止日期顯示
+        let deadlineHtml = '';
+        if (task.deadline) {
+            const d = new Date(task.deadline);
+            const dateStr = d.toLocaleString('zh-TW', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+            deadlineHtml = `<span class="badge bg-warning-subtle text-warning-tight align-self-start mt-2 px-2 py-1 border border-warning-subtle rounded text-dark" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>截止期限：${dateStr}</span>`;
+        }
+        //生成任務項目的 HTML 結構，包含 Bootstrap 樣式與 Icon
+        const html = `
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3 todo-item border-bottom shadow-sm" id="todo-${task.id}">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <input class="form-check-input me-3 border-secondary-subtle" type="checkbox" style="width: 1.4rem; height: 1.4rem; cursor: pointer;"
+                        onchange="toggleTask(${task.id}, this)" ${isChecked}>
+
+                        <!-- 任務標題與內容，已完成則套用刪除線與淡化效果 -->
+                        <div class="d-flex flex-column">
+                        <span class="fs-5 fw-bold text-dark ${textClass}" id="title-${task.id}">${task.title}</span>
+                        ${task.content ? `<span class="text-muted mt-1 ${textClass}" id="content-${task.id}" style="font-size: 0.875rem;"></i>${task.content}</span>` : ''}
+                        ${deadlineHtml}
+                    </div>
+                </div>
+                
+                <!-- 編輯與刪除按鈕，使用 Bootstrap 圖示並套用圓形按鈕樣式 -->
+                <div class="d-flex align-items-center">
+                    <a href="/edit/${task.id}/" class="btn btn-sm btn-outline-primary btn-icon me-2 rounded-circle" title="編輯細節" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="deleteTask(${task.id})" title="刪除任務" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        if (prepend) {
+            taskList.insertAdjacentHTML('afterbegin', html);
+        } else {
+            taskList.insertAdjacentHTML('beforeend', html);
+        }
+    }
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

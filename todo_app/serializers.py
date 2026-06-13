@@ -6,7 +6,7 @@ from .models import Todo
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Todo
-        fields = ['id', 'title', 'is_completed', 'created_at', 'deadline']
+        fields = ['id', 'title','content', 'is_completed', 'created_at', 'deadline']
     
     def validate_deadline(self, value):
         #負責驗證截止日期
