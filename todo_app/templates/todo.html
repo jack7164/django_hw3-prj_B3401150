@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待辦事項清單</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .completed-text {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+        .todo-item {
+            transition: all 0.2s;
+        }
+        .todo-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5" style="max-width: 700px;">
+    <div class="card shadow">
+        <div class="card-body p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <span class="text-muted fw-bold">
+                    👤目前登入：<span class="text-primary">{{ request.user.username }}</span>
+                </span>
+                <form action="{% url 'logout' %}" method="POST" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm">登出系統</button>
+                </form>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold text-primary mb-0">我的待辦事項</h2>
+                
+                <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-3 mb-0">
+                        <input class="form-check-input" type="checkbox" id="SafeModeToggle" style="cursor: pointer;">
+                        <script>
+                            document.getElementById('SafeModeToggle').checked = true; // 預設開啟安全模式
+                        </script>
+                        <label class="form-check-label text-muted" for="SafeModeToggle" style="cursor: pointer; font-size: 0.9rem;">
+                        安全模式
+                        </label>
+                    </div>
+                    
+                    <a href="{% url 'add_todo_page' %}" class="btn btn-success px-4 shadow-sm">+ 新增任務</a>
+                </div>
+            </div>
+
+            <div class="list-group list-group-flush" id="taskList">
+                {% for task in todos %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0 todo-item" 
+                         id="todo-{{ task.id }}">
+                        
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <input class="form-check-input me-3" type="checkbox" 
+                                style="width: 1.5rem; height: 1.5rem; cursor: pointer;"
+                                onchange="handleTaskCheck({{ task.id }}, this)"
+                                {% if task.is_completed %}checked{% endif %}>
+                                
+                            <div class="d-flex flex-column">
+                                <span class="fs-5 {% if task.is_completed %}completed-text{% endif %}" id="title-{{ task.id }}">
+                                    {{ task.title }}
+                                </span>
+                                {% if task.content %}
+                                <span class="text-muted mb-1" style="font-size: 0.9rem;">
+                                    {{ task.content }}
+                                </span>
+                                {% endif %}
+                                {% if task.deadline %}
+                                <span class="badge bg-info text-dark align-self-start" style="font-size: 0.8rem;">
+                                    ⏰ 截止：{{ task.deadline|date:"Y/m/d H:i" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <a href="{% url 'edit_todo_page' task.id %}" class="btn btn-sm btn-outline-primary me-2 px-3 shadow-sm" style="border-radius: 20px;">
+                            編輯
+                        </a>
+                        
+                        <button type="button" class="btn-close ms-3" aria-label="Delete" 
+                                onclick="deleteTask({{ task.id }})" style="font-size: 0.8rem;"></button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div id="emptyMessage" class="text-center py-5 text-muted d-none">
+                <p class="fs-5 mb-0">目前沒有待辦事項，休息一下吧！</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const deleteModeToggle = document.getElementById('deleteModeToggle');
+
+    // 頁面載入時檢查是否為空
+    document.addEventListener('DOMContentLoaded', () => {
+        checkEmptyState();
+    });
+
+    // 檢查畫面是否為空
+    function checkEmptyState() {
+        // 選取所有還在畫面上的任務元素
+        const items = document.querySelectorAll('.todo-item');
+        const emptyMessage = document.getElementById('emptyMessage');
+        
+        if (items.length > 0) {
+            emptyMessage.classList.add('d-none'); // 還有任務，隱藏休息訊息
+        } else {
+            emptyMessage.classList.remove('d-none'); // 沒任務了，顯示休息訊息
+        }
+    }
+
+    // 處理任務打勾的核心邏輯
+    function handleTaskCheck(id, checkboxElem) {
+        // 如果「打勾後直接刪除」的開關有被開啟，而且使用者是把任務「打勾」
+        if (!SafeModeToggle.checked && checkboxElem.checked) {
+            
+            // 直接呼叫後端的刪除 API
+            fetch(`/delete/${id}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const element = document.getElementById(`todo-${id}`);
+                    element.remove(); // 從畫面上徹底移除
+                    checkEmptyState(); // 檢查要不要顯示休息訊息
+                }
+            });
+            
+        } else {
+            // 保留模式：呼叫切換狀態 API (加上/移除 刪除線)
+            fetch(`/toggle/${id}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const titleSpan = document.getElementById(`title-${id}`);
+                if (data.is_completed) {
+                    titleSpan.classList.add('completed-text');
+                    checkboxElem.checked = true;
+                } else {
+                    titleSpan.classList.remove('completed-text');
+                    checkboxElem.checked = false;
+                }
+            });
+        }
+    }
+
+    // 右邊專屬的 X 按鈕 (維持原本的刪除功能，並帶有確認視窗)
+    function deleteTask(id) {
+        if (SafeModeToggle.checked) {
+            if (!confirm('確定要刪除這項任務嗎？')) return;
+        }
+        
+
+        fetch(`/delete/${id}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const element = document.getElementById(`todo-${id}`);
+                element.remove();
+                checkEmptyState();
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
